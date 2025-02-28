@@ -19,24 +19,7 @@ This repository contains the frontend for the **Step Counter App**, a React Nati
 
 The **Step Counter App** enables users to track their daily step count in real-time using an optimized step-counter algorithm. It includes authentication with JWT and stores activity history for progress monitoring. The app is designed for fitness enthusiasts looking for an intuitive and efficient step-tracking solution.
 
-
-### SignIn Screen
-![SignIn Screen](https://github.com/user-attachments/assets/5f2420e9-461d-4e4f-94fb-c45b3424c6f2)
-
-### SignUp Screen
-![SignUp Screen](https://github.com/user-attachments/assets/517909b1-f557-4357-822f-69733677c4d0)
-
-### Home
-![Dashboard](https://github.com/user-attachments/assets/a7489f5f-1b23-4657-b923-d875e211737a)
-
-### Daily Status
-![Step Tracking](https://github.com/user-attachments/assets/6bba60fe-54c7-4ce1-960a-45f7d30d0710)
-
-### Weekly Progress
-![Activity History](https://github.com/user-attachments/assets/c0681135-1741-47a3-bd27-70e427cbfe7b)
-
-### My Profile
-![Activity History](https://github.com/user-attachments/assets/5b5374ff-fc3a-48be-b122-944018c24fea)
+![Image](https://github.com/user-attachments/assets/ac21e7a6-a0b8-4af5-91f0-9e226dfa4885)
 
 ---
 
