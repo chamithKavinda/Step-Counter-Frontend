@@ -5,7 +5,7 @@ import { AppTabParamList } from '../types';
 import HomeScreen from '../screens/HomeScreen';
 import DailyStepsScreen from '../screens/DailyStepsScreen';
 import WeeklyStatsScreen from '../screens/WeeklyStatsScreen';
-import ProfileScreen from '../screens/ProfileScreen';
+import ProfileScreen from '../screens/ProfileScreen'
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
 

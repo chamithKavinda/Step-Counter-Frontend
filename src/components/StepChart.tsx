@@ -55,6 +55,8 @@ const StepChart: React.FC<StepChartProps> = ({ data, title }) => {
         height={220}
         chartConfig={chartConfig}
         style={styles.chart}
+        yAxisLabel=""
+        yAxisSuffix=""
         fromZero
         showValuesOnTopOfBars
       />

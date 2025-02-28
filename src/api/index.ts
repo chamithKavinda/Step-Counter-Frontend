@@ -1,123 +1,182 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { login, register } from '../api';
 
+// Types
 type User = {
   id: string;
   name: string;
   email: string;
 };
 
-type AuthContextType = {
-  user: User | null;
-  token: string | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+type AuthResponse = {
+  token: string;
+  user: User;
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Check if user is logged in
-    const loadStoredData = async () => {
-      try {
-        const storedToken = await AsyncStorage.getItem('token');
-        const storedUser = await AsyncStorage.getItem('user');
-        
-        if (storedToken && storedUser) {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-        }
-      } catch (error) {
-        console.log('Error loading auth data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadStoredData();
-  }, []);
-
-  const loginUser = async (email: string, password: string) => {
-    try {
-      setIsLoading(true);
-      const response = await login(email, password);
-      
-      const { token, user } = response;
-      
-      // Store auth data
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('user', JSON.stringify(user));
-      
-      setToken(token);
-      setUser(user);
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const registerUser = async (name: string, email: string, password: string) => {
-    try {
-      setIsLoading(true);
-      const response = await register(name, email, password);
-      
-      const { token, user } = response;
-      
-      // Store auth data
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('user', JSON.stringify(user));
-      
-      setToken(token);
-      setUser(user);
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logoutUser = async () => {
-    try {
-      // Remove stored auth data
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('user');
-      
-      setToken(null);
-      setUser(null);
-    } catch (error) {
-      console.log('Logout error:', error);
-    }
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isLoading,
-        login: loginUser,
-        register: registerUser,
-        logout: logoutUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+type StepData = {
+  id: string;
+  userId: string; 
+  date: string;
+  steps: number;
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+
+let mockUsers = [
+  {
+    id: '1',
+    name: 'Test User',
+    email: 'test@example.com',
+    password: 'password123'
   }
-  return context;
+];
+
+let mockStepData: StepData[] = [
+  { id: '1', userId: '1', date: new Date().toISOString(), steps: 5000 }
+];
+
+export const login = async (email: string, password: string): Promise<AuthResponse> => {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  const user = mockUsers.find(
+    user => user.email === email && user.password === password
+  );
+  
+  if (!user) {
+    throw new Error('Invalid credentials');
+  }
+  
+  const token = `mock-token-${Date.now()}`;
+  
+  return {
+    token,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email
+    }
+  };
+};
+
+export const register = async (
+  name: string,
+  email: string,
+  password: string
+): Promise<AuthResponse> => {
+  // Simulate API call delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Check if email is already registered
+  const existingUser = mockUsers.find(user => user.email === email);
+  if (existingUser) {
+    throw new Error('Email already registered');
+  }
+  
+  // Create new user
+  const newUser = {
+    id: `${mockUsers.length + 1}`,
+    name,
+    email,
+    password
+  };
+  
+  mockUsers.push(newUser);
+  
+  // Generate a mock token
+  const token = `mock-token-${Date.now()}`;
+  
+  return {
+    token,
+    user: {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email
+    }
+  };
+};
+
+// Step tracking functions
+export const getSteps = async (): Promise<{ stepData: StepData[] }> => {
+  // Simulate API call delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Sort by date, newest first
+  const sortedData = [...mockStepData].sort((a, b) => 
+    new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+  
+  return { stepData: sortedData };
+};
+
+export const saveSteps = async (steps: number): Promise<void> => {
+  // Simulate API call delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  const newStepEntry = {
+    id: `${mockStepData.length + 1}`,
+    userId: '1', // Assuming userId is '1' for now
+    date: new Date().toISOString(),
+    steps
+  };
+  
+  mockStepData.push(newStepEntry);
+  
+  // In a real app, you'd save this to your backend
+  // For now, also store in AsyncStorage for persistence
+  try {
+    const existingDataString = await AsyncStorage.getItem('stepData');
+    const existingData = existingDataString ? JSON.parse(existingDataString) : [];
+    existingData.push(newStepEntry);
+    await AsyncStorage.setItem('stepData', JSON.stringify(existingData));
+  } catch (error) {
+    console.error('Error saving step data locally:', error);
+  }
+};
+
+export const getDailySteps = async (): Promise<{ totalSteps: number }> => {
+  // Simulate API call delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Get today's date (just the date part)
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Filter for entries from today
+  const todayEntries = mockStepData.filter(entry => 
+    entry.date.startsWith(today)
+  );
+  
+  // Sum up today's steps
+  const totalSteps = todayEntries.reduce((sum, entry) => sum + entry.steps, 0);
+  
+  return { totalSteps };
+};
+
+export const getWeeklySteps = async (): Promise<{ 
+  weeklyData: { date: string; steps: number }[] 
+}> => {
+  // Simulate API call delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Get dates for the last 7 days
+  const weeklyData = [];
+  const today = new Date();
+  
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateString = date.toISOString().split('T')[0];
+    
+    // Filter for entries from this day
+    const dayEntries = mockStepData.filter(entry => 
+      entry.date.startsWith(dateString)
+    );
+    
+    // Sum up steps for this day
+    const daySteps = dayEntries.reduce((sum, entry) => sum + entry.steps, 0);
+    
+    weeklyData.push({
+      date: date.toISOString(),
+      steps: daySteps
+    });
+  }
+  
+  return { weeklyData };
 };

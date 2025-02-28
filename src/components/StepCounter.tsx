@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { TextInput, IconButton, Text } from 'react-native-paper';
+import { IconButton, Text } from 'react-native-paper';
 
 interface StepCounterProps {
   value: number;
@@ -9,46 +9,29 @@ interface StepCounterProps {
 
 const StepCounter: React.FC<StepCounterProps> = ({ value, onChange }) => {
   const increment = () => {
-    onChange(value + 100);
+    onChange(value + 500);
   };
 
   const decrement = () => {
-    if (value >= 100) {
-      onChange(value - 100);
-    }
-  };
-
-  const handleTextChange = (text: string) => {
-    const numValue = parseInt(text);
-    if (!isNaN(numValue) && numValue >= 0) {
-      onChange(numValue);
-    } else if (text === '') {
-      onChange(0);
-    }
+    onChange(Math.max(0, value - 500));
   };
 
   return (
     <View style={styles.container}>
       <IconButton
         icon="minus"
-        size={24}
+        size={28}
         onPress={decrement}
-        style={styles.button}
         disabled={value <= 0}
+        style={styles.button}
       />
-      <View style={styles.inputContainer}>
-        <TextInput
-          value={value.toString()}
-          onChangeText={handleTextChange}
-          keyboardType="numeric"
-          mode="outlined"
-          style={styles.input}
-        />
+      <View style={styles.valueContainer}>
+        <Text style={styles.value}>{value.toLocaleString()}</Text>
         <Text style={styles.label}>steps</Text>
       </View>
       <IconButton
         icon="plus"
-        size={24}
+        size={28}
         onPress={increment}
         style={styles.button}
       />
@@ -60,23 +43,21 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    padding: 8,
   },
   button: {
     backgroundColor: '#E8F5E9',
   },
-  inputContainer: {
-    flex: 1,
-    flexDirection: 'row',
+  valueContainer: {
     alignItems: 'center',
   },
-  input: {
-    flex: 1,
-    marginHorizontal: 8,
-    textAlign: 'center',
+  value: {
+    fontSize: 32,
+    fontWeight: 'bold',
   },
   label: {
-    marginLeft: 8,
+    fontSize: 14,
     color: '#666',
   },
 });
