@@ -30,7 +30,7 @@ let mockUsers = [
 ];
 
 let mockStepData: StepData[] = [
-  { id: '1', userId: '1', date: new Date().toISOString(), steps: 5000 }
+  { id: '1', userId: '1', date: new Date().toISOString(), steps: 0 }
 ];
 
 export const login = async (email: string, password: string): Promise<AuthResponse> => {

@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { Text, Button, ActivityIndicator } from 'react-native-paper';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, Alert, AppState, AppStateStatus } from 'react-native';
+import { Text, Button, ActivityIndicator, Switch } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { saveSteps, getDailySteps } from '../api';
 import StepCounter from '../components/StepCounter';
+import { Pedometer } from 'expo-sensors';
+import * as Permissions from 'expo-permissions';
 
 const HomeScreen = () => {
   const { user } = useAuth();
@@ -12,10 +14,69 @@ const HomeScreen = () => {
   const [dailyTotal, setDailyTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isAutoCounting, setIsAutoCounting] = useState(false);
+  const [autoSteps, setAutoSteps] = useState(0);
+  const [pedometerAvailable, setPedometerAvailable] = useState(false);
+
+  const appState = useRef(AppState.currentState);
+  const pedometerSubscription = useRef<Pedometer.Subscription | null>(null);
+  const lastSavedSteps = useRef(0);
+  const autoSaveInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchDailySteps();
+    checkPedometerAvailability();
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+  
+    return () => {
+      subscription.remove();
+      stopAutoCounting();
+      if (autoSaveInterval.current) {
+        clearInterval(autoSaveInterval.current);
+      }
+    };
   }, []);
+
+
+const checkPedometerAvailability = async () => {
+  try {
+    const { status } = await Permissions.askAsync(Permissions.MOTION);
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Please enable Motion permissions in settings.');
+      setPedometerAvailable(false);
+      return;
+    }
+    const available = await Pedometer.isAvailableAsync();
+    setPedometerAvailable(available);
+  } catch (error) {
+    console.error('Pedometer availability check failed:', error);
+    setPedometerAvailable(false);
+  }
+};
+
+
+  const handleAppStateChange = (nextAppState: AppStateStatus) => {
+    if (
+      appState.current.match(/inactive|background/) &&
+      nextAppState === 'active' &&
+      isAutoCounting
+    ) {
+      startAutoCounting();
+    }
+
+    if (
+      appState.current === 'active' &&
+      nextAppState.match(/inactive|background/) &&
+      isAutoCounting
+    ) {
+      if (autoSteps > 0) {
+        handleAutoSaveSteps();
+      }
+      stopAutoCounting();
+    }
+
+    appState.current = nextAppState;
+  };
 
   const fetchDailySteps = async () => {
     try {
@@ -41,10 +102,78 @@ const HomeScreen = () => {
       Alert.alert('Success', 'Steps saved successfully');
       setSteps(0);
       fetchDailySteps();
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save steps';
+      Alert.alert('Error', errorMessage);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAutoSaveSteps = async () => {
+    if (autoSteps - lastSavedSteps.current <= 0) return;
+
+    try {
+      const stepsToSave = autoSteps - lastSavedSteps.current;
+      await saveSteps(stepsToSave);
+      lastSavedSteps.current = autoSteps;
+      fetchDailySteps();
+      console.log(`Automatically saved ${stepsToSave} steps`);
+    } catch (error) {
+      console.error('Error auto-saving steps:', error);
+    }
+  };
+
+  const startAutoCounting = async () => {
+    if (!pedometerAvailable) {
+      Alert.alert(
+        'Pedometer Not Available',
+        'Your device does not support step counting.'
+      );
+      return;
+    }
+
+    try {
+      setAutoSteps(0);
+      lastSavedSteps.current = 0;
+
+      pedometerSubscription.current = Pedometer.watchStepCount(result => {
+        setAutoSteps(prevSteps => prevSteps + result.steps);
+      });
+
+      autoSaveInterval.current = setInterval(handleAutoSaveSteps, 5 * 60 * 1000);
+
+      setIsAutoCounting(true);
+    } catch (error) {
+      console.error('Error starting step counter:', error);
+      Alert.alert('Error', 'Failed to start step counting');
+      setIsAutoCounting(false);
+    }
+  };
+
+  const stopAutoCounting = () => {
+    if (pedometerSubscription.current) {
+      pedometerSubscription.current.remove();
+      pedometerSubscription.current = null;
+    }
+
+    if (autoSaveInterval.current) {
+      clearInterval(autoSaveInterval.current);
+      autoSaveInterval.current = null;
+    }
+
+    if (autoSteps - lastSavedSteps.current > 0) {
+      handleAutoSaveSteps();
+    }
+
+    setIsAutoCounting(false);
+  };
+
+  const toggleAutoCounting = () => {
+    if (isAutoCounting) {
+      stopAutoCounting();
+    } else {
+      startAutoCounting();
     }
   };
 
@@ -71,8 +200,33 @@ const HomeScreen = () => {
         )}
       </View>
 
+      <View style={styles.autoCounterContainer}>
+        <View style={styles.autoCounterHeader}>
+          <Text style={styles.counterTitle}>Auto Step Counter</Text>
+          <Switch
+            value={isAutoCounting}
+            onValueChange={toggleAutoCounting}
+            color="#4CAF50"
+            disabled={!pedometerAvailable}
+          />
+        </View>
+
+        {isAutoCounting && (
+          <View style={styles.currentStepsContainer}>
+            <Text style={styles.currentStepsLabel}>Current Session</Text>
+            <Text style={styles.currentStepsValue}>{autoSteps}</Text>
+          </View>
+        )}
+
+        {!pedometerAvailable && (
+          <Text style={styles.errorText}>
+            Pedometer is not available on this device
+          </Text>
+        )}
+      </View>
+
       <View style={styles.counterContainer}>
-        <Text style={styles.counterTitle}>Add Steps</Text>
+        <Text style={styles.counterTitle}>Add Steps Manually</Text>
         <StepCounter value={steps} onChange={setSteps} />
         <Button
           mode="contained"
@@ -123,6 +277,31 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2E7D32',
   },
+  autoCounterContainer: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 12,
+    padding: 24,
+    marginBottom: 24,
+  },
+  autoCounterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  currentStepsContainer: {
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  currentStepsLabel: {
+    fontSize: 16,
+    color: '#1976D2',
+  },
+  currentStepsValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#0D47A1',
+  },
   counterContainer: {
     backgroundColor: '#F5F5F5',
     borderRadius: 12,
@@ -136,6 +315,11 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 24,
+  },
+  errorText: {
+    color: '#F44336',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
 
