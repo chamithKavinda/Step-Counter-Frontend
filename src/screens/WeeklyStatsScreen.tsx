@@ -21,14 +21,28 @@ const WeeklyStatsScreen = () => {
     try {
       setLoading(true);
       const response = await getWeeklySteps();
-      const data = response.weeklyData;
+      let data = response.weeklyData;
+
+      // Use dummy data if no real data is available
+      if (!data || data.length === 0) {
+        data = [
+          { date: '2025-03-11', steps: 3000 },
+          { date: '2025-03-12', steps: 4200 },
+          { date: '2025-03-13', steps: 5000 },
+          { date: '2025-03-14', steps: 6000 },
+          { date: '2025-03-15', steps: 7000 },
+          { date: '2025-03-16', steps: 8500 },
+          { date: '2025-03-17', steps: 9000 },
+        ];
+      }
+
       setWeeklyData(data);
-      
+
       // Calculate stats
       const total = data.reduce((sum, day) => sum + day.steps, 0);
       setTotalSteps(total);
       setAvgSteps(Math.round(total / data.length));
-      
+
       let best = data[0];
       data.forEach(day => {
         if (day.steps > best.steps) {
@@ -55,10 +69,7 @@ const WeeklyStatsScreen = () => {
   };
 
   const chartData = {
-    labels: weeklyData.map(day => {
-      const date = new Date(day.date);
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
-    }),
+    labels: weeklyData.map(day => new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })),
     datasets: [
       {
         data: weeklyData.map(day => day.steps),
@@ -90,9 +101,7 @@ const WeeklyStatsScreen = () => {
     <SafeAreaView style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.header}>
           <Text style={styles.title}>Weekly Progress</Text>
@@ -101,10 +110,6 @@ const WeeklyStatsScreen = () => {
 
         {loading && !refreshing ? (
           <ActivityIndicator size="large" color="#4CAF50" style={styles.loader} />
-        ) : weeklyData.length === 0 || weeklyData.every(day => day.steps === 0) ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No step data recorded for the past week</Text>
-          </View>
         ) : (
           <>
             <Card style={styles.chartCard}>
@@ -127,24 +132,20 @@ const WeeklyStatsScreen = () => {
                   <Text style={styles.statValue}>{totalSteps}</Text>
                 </Card.Content>
               </Card>
-              
+
               <Card style={styles.statCard}>
                 <Card.Content>
                   <Text style={styles.statLabel}>Daily Average</Text>
                   <Text style={styles.statValue}>{avgSteps}</Text>
                 </Card.Content>
               </Card>
-              
+
               <Card style={styles.fullWidthCard}>
                 <Card.Content>
                   <Text style={styles.statLabel}>Best Day</Text>
                   <View style={styles.bestDayContent}>
-                    <Text style={styles.bestDayDate}>
-                      {bestDay.date ? formatDate(bestDay.date) : 'N/A'}
-                    </Text>
-                    <Text style={styles.bestDaySteps}>
-                      {bestDay.steps} steps
-                    </Text>
+                    <Text style={styles.bestDayDate}>{bestDay.date ? formatDate(bestDay.date) : 'N/A'}</Text>
+                    <Text style={styles.bestDaySteps}>{bestDay.steps} steps</Text>
                   </View>
                 </Card.Content>
               </Card>
@@ -170,24 +171,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
+    textAlign: 'center',
     marginTop: 4,
   },
   loader: {
     marginTop: 40,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
   },
   chartCard: {
     marginBottom: 24,
